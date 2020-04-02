@@ -1,0 +1,8 @@
+## Make sure that the following requirements are installed. (pip3 install -r requirements.txt)
+xmltodict
+numpy
+pandas
+json
+os
+glob
+scipy
