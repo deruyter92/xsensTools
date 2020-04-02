@@ -1,8 +1,10 @@
 ## Make sure that the following requirements are installed. (pip3 install -r requirements.txt)
 xmltodict
+argparse
 numpy
 pandas
 json
 os
+time
 glob
 scipy
