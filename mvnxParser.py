@@ -109,6 +109,52 @@ class MVNX_File(object):
         return data
 
 
+def mvnx2df(mvnxFile):
+    """
+    Creates a Pandas Dataframe containing the data and meta-data obtained from mvnxFile.
+    ---Input---
+    mvnxFile: MVNX_File object with data and metadata from xsens mvnx recording (see https://github.com/deruyter92/xsensTools)
+
+    ---Output---
+    dataframe_MVNX: a Pandas.DataFrame object with named columns.
+
+    """
+
+    # Put arrays in a Pandas DataFrame using the provided labels
+    dataframe_MVNX = pd.DataFrame()
+    dataframe_MVNX['time'] = np.arange(n_frames) / framerate # time in seconds
+
+    for i, segment in enumerate(segments):  # Put segment data in dataframe (estimation of anatomical landmarks)
+        for description, data_array in [('_pos', mvnxFile.position),
+                                        ('_vel', mvnxFile.velocity),
+                                        ('_acc', mvnxFile.acceleration),
+                                        ('_angVel', mvnxFile.angularVelocity),
+                                        ('_angAcc', angularAcceleration)]:
+            dataframe_MVNX[segment + description + '_x'] = data_array[:, i, 0]
+            dataframe_MVNX[segment + description + '_y'] = data_array[:, i, 1]
+            dataframe_MVNX[segment + description + '_z'] = data_array[:, i, 2]
+
+    for i, sensor in enumerate(sensors):  # Put sensor data in dataframe (raw data)
+        for description, data_array in [('_senFreeAcc', mvnxFile.sensorFreeAcceleration),
+                                        ('_senMagFld', mvnxFile.sensorMagneticField)]:
+            dataframe_MVNX[sensor + description + '_x'] = data_array[:, i, 0]
+            dataframe_MVNX[sensor + description + '_y'] = data_array[:, i, 1]
+            dataframe_MVNX[sensor + description + '_z'] = data_array[:, i, 2]
+
+    for description, data_array in [('posCOM', mvnxFile.centerOfMass)]:
+        dataframe_MVNX[description + '_x'] = data_array[:, 0, 0]
+        dataframe_MVNX[description + '_y'] = data_array[:, 0, 1]
+        dataframe_MVNX[description + '_z'] = data_array[:, 0, 2]
+
+    for description, data_array in [('footCon', mvnxFile.footContacts)]:
+        dataframe_MVNX[description + '_leftFootHeel'] = data_array[:, 0, 0]
+        dataframe_MVNX[description + '_leftFootToe'] = data_array[:, 0, 1]
+        dataframe_MVNX[description + '_rightFootHeel'] = data_array[:, 0, 2]
+        dataframe_MVNX[description + '_rightFootToe'] = data_array[:, 0, 3]
+    return dataframe_MVNX
+
+
+
 def export_mvnx(filenames=None, save_type='mat', verbose=True):
     """ Function for exporting mnvx data to different format.
     - Input: directory, filename or comma-separated list of filenames (type=str)
