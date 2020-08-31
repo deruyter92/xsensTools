@@ -108,9 +108,10 @@ class MVNX_File(object):
 
         # Parse all frames, and store converted dict in self.data
         for frame in frame_range:
+            store_idx = frame if self.trim is None else frame - self.trim[0]
             for key in data_keys:
                 try:
-                    data[key][frame] = self.parse_frame(frame, key)
+                    data[key][store_idx] = self.parse_frame(frame, key)
                 except KeyError:
                     continue
 
