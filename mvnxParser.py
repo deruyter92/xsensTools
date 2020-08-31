@@ -35,6 +35,8 @@ class MVNX_File(object):
 
         # Read file
         self.xml_dict = self.read_mvnx(filename)
+        if self.trim is not None and self.trim[1] == -1:
+            self.trim[1] = len(self)
 
         # Load metadata
         self.metadata = self.load_metadata()
@@ -46,8 +48,9 @@ class MVNX_File(object):
         for item in self.data.items():
             setattr(self, *item)
 
-    #         if verbose:
-    #             print('succesfully loaded')
+
+    def __len__(self):
+        return len(self.xml_dict['mvnx']['subject']['frames']['frame'])
 
     def read_mvnx(self, filename):
         # Open file and load as ordered dict
