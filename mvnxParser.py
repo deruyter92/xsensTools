@@ -23,9 +23,15 @@ class MVNX_File(object):
 
     """
 
-    def __init__(self, filename, verbose=True):
+    def __init__(self, filename, trim=None, verbose=True):
+
+        self.filename = filename
+        self.trim = trim
+
         if verbose:
             print('reading file: ' + filename + ' ..')
+            if self.trim is not None:
+                print('Attention, trimming/slicing the recording! Only loading frames %d to %d' %(self.trim[0], self.trim[1]))
 
         # Read file
         self.xml_dict = self.read_mvnx(filename)
@@ -35,7 +41,7 @@ class MVNX_File(object):
         for item in self.metadata.items():
             setattr(self, *item)
 
-        # Convert xml ordered dict to useful data dictionary
+        # Load data (Convert xml ordered dict to useful data dictionary)
         self.data = self.frames_to_dict()
         for item in self.data.items():
             setattr(self, *item)
@@ -71,7 +77,7 @@ class MVNX_File(object):
                                                   child['footContactDefinition']['contactDefinition']]
 
         child = child['frames']['frame']
-        metadata['n_frames'] = len(child)
+        metadata['n_frames'] = len(child) if self.trim is None else self.trim[1]-self.trim[0]
         metadata['data_keys'] = [key for key in child[-1].keys() if not key.startswith('@')]
         return metadata
 
@@ -85,12 +91,14 @@ class MVNX_File(object):
         out = np.array(child[frame][key].split(), dtype=float)
         return out.reshape(-1, 3) if not key in exceptions_4D else out.reshape(-1, 4)
 
-    def frames_to_dict(self, data_keys=None, n_frames=None):
+    def frames_to_dict(self, data_keys=None):
+
+        n_frames = self.metadata['n_frames']
+        frame_range = range(n_frames) if self.trim is None else range(self.trim[0],self.trim[1])
         if data_keys is None:
             data_keys = self.metadata['data_keys']
 
-        if n_frames is None:
-            n_frames = self.metadata['n_frames']
+
 
         # Parse last frame and evaluate what data is stored in MVNX-file
         data = {}
@@ -99,7 +107,7 @@ class MVNX_File(object):
             data[key] = np.zeros((n_frames,) + d_shape)
 
         # Parse all frames, and store converted dict in self.data
-        for frame in range(n_frames):
+        for frame in frame_range:
             for key in data_keys:
                 try:
                     data[key][frame] = self.parse_frame(frame, key)
