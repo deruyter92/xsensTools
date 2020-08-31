@@ -30,13 +30,25 @@ class MVNX_File(object):
 
         if verbose:
             print('reading file: ' + filename + ' ..')
-            if self.trim is not None:
-                print('Attention, trimming/slicing the recording! Only loading frames %d to %d' %(self.trim[0], self.trim[1]))
 
         # Read file
         self.xml_dict = self.read_mvnx(filename)
-        if self.trim is not None and self.trim[1] == -1:
-            self.trim[1] = len(self)
+        self.load_frames(trim=trim,verbose=verbose)
+
+
+
+    def __len__(self):
+        return len(self.xml_dict['mvnx']['subject']['frames']['frame'])
+
+
+    def load_frames(self,trim=None,verbose=True):
+
+        self.trim = trim
+        if self.trim is not None:
+            if self.trim[1] == -1:
+                self.trim[1] = len(self)
+            if verbose:
+                print('Attention, trimming/slicing the recording! only loading frames %d to %d' %(self.trim[0],self.trim[1]))
 
         # Load metadata
         self.metadata = self.load_metadata()
@@ -47,10 +59,8 @@ class MVNX_File(object):
         self.data = self.frames_to_dict()
         for item in self.data.items():
             setattr(self, *item)
+        return
 
-
-    def __len__(self):
-        return len(self.xml_dict['mvnx']['subject']['frames']['frame'])
 
     def read_mvnx(self, filename):
         # Open file and load as ordered dict
@@ -80,7 +90,7 @@ class MVNX_File(object):
                                                   child['footContactDefinition']['contactDefinition']]
 
         child = child['frames']['frame']
-        metadata['n_frames'] = len(child) if self.trim is None else self.trim[1]-self.trim[0]
+        metadata['n_frames'] = len(child) if self.trim is not None else self.trim[1] - self.trim[0]
         metadata['data_keys'] = [key for key in child[-1].keys() if not key.startswith('@')]
         return metadata
 
