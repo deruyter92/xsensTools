@@ -90,7 +90,7 @@ class MVNX_File(object):
                                                   child['footContactDefinition']['contactDefinition']]
 
         child = child['frames']['frame']
-        metadata['n_frames'] = len(child) if self.trim is not None else self.trim[1] - self.trim[0]
+        metadata['n_frames'] = len(child) if self.trim is None else self.trim[1] - self.trim[0]
         metadata['data_keys'] = [key for key in child[-1].keys() if not key.startswith('@')]
         return metadata
 
