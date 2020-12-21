@@ -5,7 +5,7 @@ Tools for working with data from mvn xsens accelerometer suit
 #### mvnxParser
 Tool to read datafiles with .mvnx extension in python. Can also be used for exportation of mvnx files to different file format (currently .mat and .json is supported). 
 
-* usage: python3 mvnxParser [-h] [-t] [-v] [-l] filenames
+* usage: python3 mvnxParser [-h][-v][-t][-l][-a][-m][-l] filenames
     * filenames: filename(s) or directory containing .mvnx files for conversion and export
     * -h, --help:     show this help message and exit
     * -v, --verbose:   increase output verbosity
