@@ -80,17 +80,17 @@ class MVNX_File(object):
 
         # Recording details
         child = root['mvnx']['subject']
-        metadata['framerate'] = float(child['@frameRate'])
-        metadata['subject'] = {key[1:]: child[key] for key in child.keys() if key.startswith('@')}
-        metadata['segments'] = [segment['@label'] for segment in child['segments']['segment']]
-        metadata['sensors'] = [sensor['@label'] for sensor in child['sensors']['sensor']]
+        metadata['framerate']   = float(child['@frameRate'])
+        metadata['subject']     = {key[1:]: child[key] for key in child.keys() if key.startswith('@')}
+        metadata['segments']    = [segment['@label'] for segment in child['segments']['segment']]
+        metadata['sensors']     = [sensor['@label'] for sensor in child['sensors']['sensor']]
 
         if child['footContactDefinition']:
             metadata['footContactsDefinition'] = [item['@index'] + ': ' + item['@label'] for item in
                                                   child['footContactDefinition']['contactDefinition']]
 
         child = child['frames']['frame']
-        metadata['n_frames'] = len(child) if self.trim is None else self.trim[1] - self.trim[0]
+        metadata['n_frames']  = len(child) if self.trim is None else self.trim[1] - self.trim[0]
         metadata['data_keys'] = [key for key in child[-1].keys() if not key.startswith('@')]
         return metadata
 
@@ -169,15 +169,15 @@ def mvnx2df(mvnxFile):
         dataframe_MVNX[description + '_z'] = data_array[:, 0, 2]
 
     for description, data_array in [('footCon', mvnxFile.footContacts)]:
-        dataframe_MVNX[description + '_leftFootHeel'] = data_array[:, 0, 0]
-        dataframe_MVNX[description + '_leftFootToe'] = data_array[:, 0, 1]
-        dataframe_MVNX[description + '_rightFootHeel'] = data_array[:, 0, 2]
-        dataframe_MVNX[description + '_rightFootToe'] = data_array[:, 0, 3]
+        dataframe_MVNX[description + '_leftFootHeel']   = data_array[:, 0, 0]
+        dataframe_MVNX[description + '_leftFootToe']    = data_array[:, 0, 1]
+        dataframe_MVNX[description + '_rightFootHeel']  = data_array[:, 0, 2]
+        dataframe_MVNX[description + '_rightFootToe']   = data_array[:, 0, 3]
     return dataframe_MVNX
 
 
 
-def export_mvnx(filenames=None, save_type='mat', verbose=True):
+def export_mvnx(filenames=None, save_type='mat', verbose=False, anonimize=False, merge_metadata=False):
     """ Function for exporting mnvx data to different format.
     - Input: directory, filename or comma-separated list of filenames (type=str)
     - Default behavior: data is saved as .mat format and metadata as .json file.
@@ -200,9 +200,9 @@ def export_mvnx(filenames=None, save_type='mat', verbose=True):
             print('Cannot convert type .mvn, please convert to .mvnx in MVN-studio first!')
             remove.append(fn)
         elif os.path.isdir(fn):
-            filenames = glob(fn+'/*.mvnx')
+            filenames = sorted(glob(fn+'/*.mvnx'))
             print('converting all files in directory: ', fn)
-            return export_mvnx(filenames)
+            return export_mvnx(filenames, save_type, verbose, anonimize, merge_metadata)
         elif fn.endswith('.mvnx'):
             fn = fn[:-5]
 
@@ -218,6 +218,11 @@ def export_mvnx(filenames=None, save_type='mat', verbose=True):
     # Do the actual conversion
     for fn in filenames:
         infile = MVNX_File(fn+'.mvnx', verbose=verbose)
+
+        if anonimize:
+            infile.metadata['subject']['recDate']                 = '[REMOVED]'
+            infile.metadata['subject']['recDateMSecsSinceEpoch']  = '[REMOVED]'
+            infile.metadata['subject']['originalFilename']        = '[REMOVED]'
         with open(fn+'.json', 'w') as outfile:
             json.dump({'metadata':infile.metadata},outfile)
         if save_type == 'mat':
@@ -226,6 +231,19 @@ def export_mvnx(filenames=None, save_type='mat', verbose=True):
             raise NotImplementedError('conversion to tsv is not supported yet')
         if verbose:
             print('successfully converted '+ fn +'.mvnx')
+
+    if merge_metadata:
+        directories = {os.path.split(fn)[0] for fn in filenames}
+        for root in directories:
+            files = [fn + '.json' for fn in filenames if root == os.path.split(fn)[0]]
+            merged = []
+            for fn in files:
+                with open(fn,'r') as file:
+                    merged.append((fn,json.load(file)))
+                os.remove(fn)
+
+            with open(os.path.join(root,'Metadata.json'),'w') as file:
+                json.dump({os.path.split(fn)[1][:-5]:file['metadata'] for fn,file in merged},file)
 
     if remove and verbose:
         print('Did not convert the following items:', remove)
@@ -246,19 +264,25 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("filenames", type=str,
                         help="filename or directory containing .mvnx files for export/conversion")
-    parser.add_argument("-t", "--savetsv", action="store_true",
+    parser.add_argument("-tsv", "--savetsv", action="store_true",
                         help="save data as .tsv instead of .mat")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="increase output verbosity")
     parser.add_argument("-l", "--filelist", action="store_true",
                         help="use this flag when passing multiple filenames (please use comma-separated filenames e.g. 'S01-001.mvnx,S01-002.mvnx,S01-003.mvnx')  ")
+    parser.add_argument("-a", "--anonimize", action="store_true",
+                        help="use this flag to remove potentially identifying metadata, such as recording date or original filename")
+    parser.add_argument("-m", "--merge_metadata", action="store_true",
+                        help="use this flag to merge metadata from recordings in the same directory into a single JSON file")
     args = parser.parse_args()
 
     # Unparse arguments
-    filenames = args.filenames if not args.filelist else args.filenames.split(sep=',')
-    save_type = 'mat' if not args.savetsv else 'tsv'
-    verbose = args.verbose
+    filenames   = args.filenames if not args.filelist else args.filenames.split(sep=',')
+    save_type   = 'mat' if not args.savetsv else 'tsv'
+    verbose     = args.verbose
+    anonimize   = args.anonimize
+    merge       = args.merge_metadata
 
     # Export mvnx filenames
-    export_mvnx(filenames=filenames, save_type=save_type, verbose=verbose)
+    export_mvnx(filenames=filenames, save_type=save_type, verbose=verbose, anonimize=anonimize,merge_metadata=merge)
     print('Finished in %3.2f minutes' % ((time.time() - start_time) / 60))
