@@ -33,6 +33,7 @@ class MVNX_File(object):
 
         # Read file
         self.xml_dict = self.read_mvnx(filename)
+        assert self.xmldict['mvnx']['subject']['sensors'] is not None, 'Failed to locate raw sensor data in MVNX-file. Check export settings in MVN Studio.'
         self.load_frames(trim=trim,verbose=verbose)
 
 
